@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SNAP Graph Processing Tool (gpt) - Sentinel-2 Preprocessing
+  
+  This graph processes Sentinel-2 L2A products for visualization:
+  1. Resample all bands to 10m
+  2. Apply cloud masking (Scene Classification Layer)
+  3. Select RGB bands (B04, B03, B02)
+  4. Export as GeoTIFF
+  
+  Usage:
+    gpt s2_preproc.xml -Pinput=S2A_L2A.zip -Poutput=s2_rgb.tif
+  
+  Parameters:
+    - input: Path to S2 L2A product (ZIP or SAFE)
+    - output: Output RGB GeoTIFF path
+-->
+<graph id="S2_Preprocessing">
+  
+  <version>1.0</version>
+  
+  <!-- Read Sentinel-2 Product -->
+  <node id="Read">
+    <operator>Read</operator>
+    <sources/>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <file>${input}</file>
+    </parameters>
+  </node>
+  
+  <!-- Resample all bands to 10m -->
+  <node id="Resample">
+    <operator>Resample</operator>
+    <sources>
+      <sourceProduct refid="Read"/>
+    </sources>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <referenceBand>B2</referenceBand>
+      <targetWidth/>
+      <targetHeight/>
+      <targetResolution>10</targetResolution>
+      <upsampling>Bilinear</upsampling>
+      <downsampling>Mean</downsampling>
+      <flagDownsampling>First</flagDownsampling>
+      <resampleOnPyramidLevels>true</resampleOnPyramidLevels>
+    </parameters>
+  </node>
+  
+  <!-- Cloud Masking using Scene Classification Layer (SCL) -->
+  <node id="Sen2Cor-CloudMask">
+    <operator>Sen2Cor</operator>
+    <sources>
+      <sourceProduct refid="Resample"/>
+    </sources>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <selectedBands>B2,B3,B4</selectedBands>
+    </parameters>
+  </node>
+  
+  <!-- Band Subset (Select RGB: B04=Red, B03=Green, B02=Blue) -->
+  <node id="BandSelect">
+    <operator>BandSelect</operator>
+    <sources>
+      <sourceProduct refid="Resample"/>
+    </sources>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <sourceBands>B4,B3,B2</sourceBands>
+      <bandNamePattern/>
+    </parameters>
+  </node>
+  
+  <!-- Write Output GeoTIFF -->
+  <node id="Write">
+    <operator>Write</operator>
+    <sources>
+      <sourceProduct refid="BandSelect"/>
+    </sources>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <file>${output}</file>
+      <formatName>GeoTIFF</formatName>
+    </parameters>
+  </node>
+  
+</graph>
