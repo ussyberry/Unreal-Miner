@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  unreal-miner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: unreal-miner:latest
+    container_name: unreal-miner-pipeline
+    
+    # Environment variables for Copernicus credentials
+    environment:
+      - COPERNICUS_USER=${COPERNICUS_USER}
+      - COPERNICUS_PASSWORD=${COPERNICUS_PASSWORD}
+      - JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+      - SNAP_HOME=/opt/snap
+    
+    # Mount data volumes for persistence
+    volumes:
+      - ./data:/workspace/data
+      - ./scripts:/workspace/scripts
+      - ./snap:/workspace/snap
+      - ./docs:/workspace/docs
+      - ./examples:/workspace/examples
+      - ./tests:/workspace/tests
+      - ./config:/workspace/config
+    
+    # Resource limits (adjust based on your system)
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 32G
+        reservations:
+          cpus: '4'
+          memory: 16G
+    
+    # Keep container running
+    stdin_open: true
+    tty: true
+    
+    # Network configuration
+    networks:
+      - unreal-miner-net
+
+  # Optional: Jupyter notebook service for interactive analysis
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: unreal-miner:latest
+    container_name: unreal-miner-jupyter
+    
+    environment:
+      - COPERNICUS_USER=${COPERNICUS_USER}
+      - COPERNICUS_PASSWORD=${COPERNICUS_PASSWORD}
+      - JUPYTER_ENABLE_LAB=yes
+    
+    volumes:
+      - ./data:/workspace/data
+      - ./scripts:/workspace/scripts
+      - ./notebooks:/workspace/notebooks
+    
+    ports:
+      - "8888:8888"
+    
+    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password=''
+    
+    networks:
+      - unreal-miner-net
+
+networks:
+  unreal-miner-net:
+    driver: bridge

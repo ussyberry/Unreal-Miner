@@ -1,0 +1,216 @@
+# Unreal Miner - Default Configuration
+# Edit this file to customize processing parameters
+
+# Processing parameters for anomaly detection
+processing:
+  # Expected proportion of anomalies (0.01-0.05 typical)
+  contamination: 0.02
+  
+  # Number of trees in IsolationForest
+  n_estimators: 200
+  
+  # Random seed for reproducibility
+  random_state: 42
+  
+  # CPU cores to use (-1 = all cores)
+  n_jobs: -1
+  
+  # Enable caching for faster re-runs
+  enable_cache: true
+
+# Export parameters for Unreal Engine
+export:
+  # Heightmap size (must be power-of-2 + 1)
+  # Valid: 127, 255, 511, 513, 1025, 2049, 4097, 8193
+  target_size: 4097
+  
+  # Texture size (power-of-2)
+  texture_size: 4096
+  
+  # Vertical exaggeration factor (1.0-10.0)
+  vertical_exaggeration: 2.0
+  
+  # Landscape section size (Unreal)
+  section_size: 127
+
+# Data paths
+paths:
+  data_dir: ./data
+  raw_dir: ./data/raw
+  processed_dir: ./data/processed
+  aligned_dir: ./data/aligned
+  output_dir: ./data/outputs
+  unreal_export_dir: ./data/unreal_export
+  cache_dir: ./data/cache
+  log_dir: ./logs
+
+# Logging configuration
+logging:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: '%(asctime)s - %(levelname)s - %(message)s'
+  file: ./logs/pipeline.log
+  console: true
+
+# Feature extraction configuration
+features:
+  # SAR features from Sentinel-1
+  sar:
+    enabled: true
+    features:
+      - vv_vh_ratio          # Cross-polarization ratio
+      - vv_texture           # Coefficient of variation
+      - vv_mean              # Local mean backscatter
+      - vh_mean              # Local mean backscatter
+    window_size: 5           # Spatial window for texture
+  
+  # Optical features from Sentinel-2
+  optical:
+    enabled: true
+    features:
+      - brightness           # Average of RGB
+      - ndvi_proxy           # Vegetation index proxy
+      - ndwi_proxy           # Water index proxy
+      - rg_ratio             # Red/Green ratio
+      - rb_ratio             # Red/Blue ratio
+  
+  # Terrain features from DEM
+  terrain:
+    enabled: true
+    features:
+      - slope                # Terrain gradient magnitude
+      - aspect               # Terrain orientation
+      - roughness            # Local elevation variance
+      - curvature            # Second derivative
+    window_size: 5           # Spatial window for roughness
+
+# SNAP preprocessing parameters
+snap:
+  # Sentinel-1 calibration
+  s1_calibration:
+    auxiliary_file: 'Latest Auxiliary File'
+    output_sigma: true
+    output_beta: false
+    output_gamma: false
+  
+  # Speckle filtering
+  s1_speckle_filter:
+    filter: 'Lee Sigma'      # Lee Sigma, Lee, Frost, Gamma Map
+    window_size: 7
+    sigma: 0.9
+    target_window_size: 3
+  
+  # Terrain correction
+  s1_terrain_correction:
+    dem_name: 'SRTM 1Sec HGT'
+    pixel_spacing: 10.0
+    map_projection: 'AUTO:42001'  # UTM automatic
+    resampling: 'BILINEAR_INTERPOLATION'
+    save_dem: true
+  
+  # Sentinel-2 resampling
+  s2_resample:
+    target_resolution: 10    # Meters
+    upsampling: 'Bilinear'
+    downsampling: 'Mean'
+  
+  # Cloud masking
+  s2_cloud_mask:
+    enabled: true
+    cloud_probability_threshold: 0.4
+
+# GDAL alignment parameters
+gdal:
+  # Target coordinate reference system
+  target_crs: 'AUTO'         # Auto-detect from data, or specify EPSG code
+  
+  # Target resolution (meters)
+  target_resolution: 10.0
+  
+  # Resampling method
+  resampling:
+    dem: 'bilinear'
+    sar: 'bilinear'
+    optical: 'cubic'
+  
+  # Compression
+  compression: 'LZW'
+  
+  # Tiling for large datasets
+  tiled: true
+  tile_size: 256
+
+# Machine learning model parameters
+ml_models:
+  # IsolationForest (default)
+  isolation_forest:
+    enabled: true
+    n_estimators: 200
+    max_samples: 'auto'
+    contamination: 0.02
+    max_features: 1.0
+    bootstrap: false
+  
+  # Optional: One-Class SVM
+  one_class_svm:
+    enabled: false
+    nu: 0.02
+    kernel: 'rbf'
+    gamma: 'scale'
+  
+  # Optional: Local Outlier Factor
+  local_outlier_factor:
+    enabled: false
+    n_neighbors: 20
+    contamination: 0.02
+
+# Validation parameters
+validation:
+  # Check for NaN/Inf values
+  check_invalid: true
+  
+  # Minimum valid pixels percentage
+  min_valid_pixels: 0.5
+  
+  # CRS validation
+  check_crs_match: true
+  
+  # Extent overlap check
+  check_extent_overlap: true
+  
+  # File size limits (MB)
+  max_input_size: 5000
+  max_output_size: 2000
+
+# Performance optimization
+performance:
+  # Enable multiprocessing
+  multiprocessing: true
+  
+  # Chunk size for large rasters
+  chunk_size: 1024
+  
+  # Memory limit (MB)
+  memory_limit: 8192
+  
+  # Enable progress bars
+  progress_bars: true
+
+# Unreal Engine specific settings
+unreal:
+  # Landscape material settings
+  landscape:
+    material_layer_blend: true
+    layer_blend_mode: 'LB_WeightBlend'
+  
+  # Cesium for Unreal settings
+  cesium:
+    enabled: false
+    ion_token: ''            # Your Cesium ion token
+    tileset_id: null
+  
+  # LOD settings
+  lod:
+    lod_0_screen_size: 1.0
+    lod_1_screen_size: 0.5
+    lod_2_screen_size: 0.25
+    lod_3_screen_size: 0.125
