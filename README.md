@@ -235,7 +235,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Project Lead**: Usman Alex Kadiri
 - **Contact**: usman.kadiri@gmail.com
-- **Issues**: https://github.com/yourusername/Unreal-Miner/issues
+- **Issues**: https://github.com/ussyberry/Unreal-Miner/issues
 
 ## 🌟 Acknowledgments
 
