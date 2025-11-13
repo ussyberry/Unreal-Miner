@@ -233,8 +233,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Maintainers
 
-- **Project Lead**: [Your Name]
-- **Contact**: your.email@example.com
+- **Project Lead**: Usman Alex Kadiri
+- **Contact**: usman.kadiri@gmail.com
 - **Issues**: https://github.com/yourusername/Unreal-Miner/issues
 
 ## 🌟 Acknowledgments
