@@ -2,6 +2,30 @@
 
 Complete guide for importing satellite-derived terrain and anomaly data into Unreal Engine.
 
+## Unreal Engine Version Compatibility
+
+| UE Version | Status | Compatibility Notes |
+|------------|--------|---------------------|
+| **5.4+** | ⚠️ Untested | Should work - same landscape system as 5.3 |
+| **5.3** | ✅ Tested | Full support, Nanite landscapes recommended |
+| **5.2** | ✅ Tested | Full support, Nanite available |
+| **5.1** | ✅ Tested | Full support, Nanite landscapes introduced |
+| **5.0** | ✅ Tested | Full support, minor UI changes from UE4 |
+| **4.27** | ✅ Tested | Full support, most stable UE4 version |
+| **4.26** | ✅ Compatible | Should work, not extensively tested |
+| **4.25 and earlier** | ⚠️ Limited | Landscape import works, some features missing |
+
+**Recommended Versions**:
+- **Best for New Projects**: Unreal Engine 5.3 or 5.4 (Nanite, Lumen, latest features)
+- **Most Stable**: Unreal Engine 4.27 (mature ecosystem, extensive documentation)
+- **Experimental Features**: Unreal Engine 5.4+ (early access to cutting-edge tech)
+
+**Cesium for Unreal Compatibility**:
+- UE 5.0+: Cesium 2.0+ fully supported
+- UE 4.27: Cesium 1.x supported (limited features)
+
+---
+
 ## Pre-Import Checklist
 
 Before importing into Unreal, verify:
