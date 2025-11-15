@@ -1,5 +1,11 @@
 # Unreal Miner
 
+[![CI](https://github.com/ussyberry/Unreal-Miner/workflows/CI/badge.svg)](https://github.com/ussyberry/Unreal-Miner/actions)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![GDAL](https://img.shields.io/badge/GDAL-3.4%2B-orange.svg)](https://gdal.org/)
+[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://hub.docker.com/)
+
 **SAR Satellite Data Converted to Unreal Engine Visuals For Virtual Remote Mineral Exploration**
 
 A proof-of-concept pipeline that converts Sentinel-1 (SAR) and Sentinel-2 (optical) Copernicus satellite data into fused anomaly products and georeferenced assets ready for interactive visualization in Unreal Engine (native Landscape or Cesium for Unreal). This repository enables AI-powered remote mineral identification by processing satellite imagery through advanced machine learning techniques.
@@ -63,6 +69,28 @@ The example pipeline will:
 3. Align rasters with GDAL to common UTM grid
 4. Extract features and detect anomalies using machine learning
 5. Export Unreal-ready assets (heightmap, textures, anomaly maps)
+
+## 📸 Gallery
+
+> **Note**: Visual examples are being compiled. See [docs/images/README.md](docs/images/README.md) for planned gallery contents.
+
+### Coming Soon
+
+![Satellite Input](docs/images/satellite_input.png)
+*Sentinel-1 SAR data visualization showing backscatter patterns*
+
+![Heightmap Output](docs/images/heightmap_output.png)
+*Processed Digital Elevation Model ready for Unreal Engine import*
+
+![Unreal Engine Visualization](docs/images/unreal_visualization.png)
+*Interactive 3D terrain with anomaly overlays in Unreal Engine*
+
+![Anomaly Detection](docs/images/anomaly_map.png)
+*AI-detected geological anomalies highlighted in probability heatmap*
+
+**Want to contribute?** If you've successfully processed data with Unreal Miner and have screenshots to share, please submit them via pull request!
+
+---
 
 ## 📁 Repository Structure
 
@@ -191,10 +219,18 @@ Found a bug or have a feature request? Open an issue using our templates:
 
 ## 📖 Documentation
 
+### Core Documentation
 - **[Architecture Overview](docs/architecture.md)**: System design and data flow
 - **[Processing Pipeline](docs/processing_pipeline.md)**: Step-by-step execution guide
 - **[Unreal Import Guide](docs/unreal_import_checklist.md)**: Complete import instructions
-- **[Validation & Limitations](docs/validation_and_limitations.md)**: Important caveats and best practices
+- **[Troubleshooting](docs/troubleshooting.md)**: Common issues and solutions
+
+### New: Extended Documentation
+- **[Scientific Validation](docs/validation.md)**: Model performance, geological basis, and limitations
+- **[Performance Benchmarks](docs/performance.md)**: Processing times, hardware requirements, optimization tips
+- **[ML Models](docs/ml_models.md)**: Algorithm details, customization, and feature engineering
+- **[Data Acquisition](docs/data_acquisition.md)**: Copernicus API setup, data sources, troubleshooting
+- **[Project Roadmap](ROADMAP.md)**: Development status, future plans, and how to contribute
 
 ## 🔐 Data Policy
 
