@@ -26,11 +26,12 @@ ENV SNAP_HOME=/opt/snap
 
 # Install SNAP (Sentinel Application Platform)
 FROM base AS snap-installer
+SHELL ["/bin/bash", "-c"]
 WORKDIR /tmp
-RUN wget -q http://step.esa.int/downloads/${SNAP_VERSION}/installers/esa-snap_sentinel_unix_${SNAP_VERSION//./_}.sh \
-    && chmod +x esa-snap_sentinel_unix_${SNAP_VERSION//./_}.sh \
-    && ./esa-snap_sentinel_unix_${SNAP_VERSION//./_}.sh -q -dir ${SNAP_HOME} \
-    && rm esa-snap_sentinel_unix_${SNAP_VERSION//./_}.sh
+RUN wget -q https://download.esa.int/step/snap/v${SNAP_VERSION}/installers/esa-snap_sentinel_unix_${SNAP_VERSION//./_}.sh && \
+    chmod +x esa-snap_sentinel_unix_${SNAP_VERSION//./_}.sh && \
+    ./esa-snap_sentinel_unix_${SNAP_VERSION//./_}.sh -q -dir ${SNAP_HOME} && \
+    rm esa-snap_sentinel_unix_${SNAP_VERSION//./_}.sh
 
 # Configure SNAP
 RUN ${SNAP_HOME}/bin/snap --nosplash --nogui --modules --update-all

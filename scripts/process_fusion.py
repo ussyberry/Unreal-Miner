@@ -26,7 +26,7 @@ import rasterio
 from rasterio.transform import from_origin
 from rasterio.crs import CRS
 from scipy.ndimage import generic_filter
-from sklearn.ensemble import IsolationForest
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 
 # Configure logging
@@ -146,7 +146,20 @@ def compute_terrain_features(dem):
     return features
 
 
-def stack_features(sar_features, optical_features, terrain_features):
+def compute_emit_features(emit_data):
+    """Placeholder for computing spectral indices from EMIT data."""
+    logger.info("Computing EMIT features (placeholder)...")
+    # This is a placeholder. In a real implementation, you would calculate
+    # spectral indices for iron, clay, carbonates, etc. here.
+    # For now, we'll just return a dummy feature.
+    dummy_feature = emit_data[:, :, 0] * 0.1
+    features = {
+        'dummy_emit_feature': dummy_feature
+    }
+    return features
+
+
+def stack_features(sar_features, optical_features, terrain_features, emit_features):
     """Stack all features into a single array for ML processing."""
     logger.info("Stacking features...")
     
@@ -154,6 +167,7 @@ def stack_features(sar_features, optical_features, terrain_features):
     all_features.update(sar_features)
     all_features.update(optical_features)
     all_features.update(terrain_features)
+    all_features.update(emit_features)
     
     # Get shape from first feature
     first_key = list(all_features.keys())[0]
@@ -171,9 +185,9 @@ def stack_features(sar_features, optical_features, terrain_features):
     return feature_array, feature_names
 
 
-def detect_anomalies(feature_array, contamination=0.02, n_estimators=200):
-    """Apply IsolationForest for anomaly detection."""
-    logger.info(f"Running anomaly detection (contamination={contamination})...")
+def classify_minerals(feature_array, n_estimators=200):
+    """Apply RandomForest for mineral classification."""
+    logger.info("Running mineral classification...")
     
     h, w, n_features = feature_array.shape
     
@@ -190,49 +204,42 @@ def detect_anomalies(feature_array, contamination=0.02, n_estimators=200):
     features_scaled = features_2d.copy()
     features_scaled[valid_mask] = scaler.fit_transform(features_2d[valid_mask])
     
-    # Fit IsolationForest
-    logger.info("Training IsolationForest model...")
-    clf = IsolationForest(
+    # Placeholder for training data
+    # In a real scenario, you would load your labeled training data here.
+    # For now, we'll generate some dummy training data.
+    n_train_samples = 1000
+    X_train = np.random.rand(n_train_samples, n_features)
+    y_train = np.random.randint(0, 3, n_train_samples) # 3 mineral classes
+
+    # Fit RandomForestClassifier
+    logger.info("Training RandomForestClassifier model...")
+    clf = RandomForestClassifier(
         n_estimators=n_estimators,
-        contamination=contamination,
         random_state=42,
         n_jobs=-1,  # Use all CPU cores
         verbose=1
     )
     
-    clf.fit(features_scaled[valid_mask])
+    clf.fit(X_train, y_train)
     
-    # Predict anomaly scores
-    logger.info("Predicting anomaly scores...")
-    scores = np.full(features_2d.shape[0], np.nan, dtype=np.float32)
-    scores[valid_mask] = -clf.score_samples(features_scaled[valid_mask])
-    
-    # Normalize scores to 0-1 probability
-    valid_scores = scores[valid_mask]
-    score_min = np.percentile(valid_scores, 1)  # Use percentile for robustness
-    score_max = np.percentile(valid_scores, 99)
-    
-    scores_norm = np.zeros_like(scores)
-    scores_norm[valid_mask] = (scores[valid_mask] - score_min) / (score_max - score_min + 1e-9)
-    scores_norm = np.clip(scores_norm, 0, 1)
+    # Predict mineral classes
+    logger.info("Predicting mineral classes...")
+    predictions = np.full(features_2d.shape[0], np.nan, dtype=np.float32)
+    predictions[valid_mask] = clf.predict(features_scaled[valid_mask])
     
     # Reshape to image
-    anomaly_map = scores_norm.reshape(h, w)
+    classification_map = predictions.reshape(h, w)
     
     # Statistics
     stats = {
-        'mean': float(np.nanmean(anomaly_map)),
-        'std': float(np.nanstd(anomaly_map)),
-        'min': float(np.nanmin(anomaly_map)),
-        'max': float(np.nanmax(anomaly_map)),
-        'p50': float(np.nanpercentile(anomaly_map, 50)),
-        'p95': float(np.nanpercentile(anomaly_map, 95)),
-        'p99': float(np.nanpercentile(anomaly_map, 99)),
-        'n_anomalies_p95': int((anomaly_map > np.nanpercentile(anomaly_map, 95)).sum())
+        'mean': float(np.nanmean(classification_map)),
+        'std': float(np.nanstd(classification_map)),
+        'min': float(np.nanmin(classification_map)),
+        'max': float(np.nanmax(classification_map)),
     }
     
-    logger.info(f"Anomaly detection complete. Stats: {stats}")
-    return anomaly_map, stats
+    logger.info(f"Mineral classification complete. Stats: {stats}")
+    return classification_map, stats
 
 
 def save_geotiff(data, output_path, profile):
@@ -298,14 +305,14 @@ def main():
                         help='Path to Sentinel-2 RGB GeoTIFF')
     parser.add_argument('--dem-path', required=True, type=Path,
                         help='Path to DEM GeoTIFF')
+    parser.add_argument('--emit-path', type=Path,
+                        help='Path to EMIT GeoTIFF (optional)')
     parser.add_argument('--output-dir', required=True, type=Path,
                         help='Output directory for results')
     parser.add_argument('--tile-id', default='tile_001',
                         help='Tile identifier')
-    parser.add_argument('--contamination', type=float, default=0.02,
-                        help='Expected anomaly rate (0.01-0.05)')
     parser.add_argument('--n-estimators', type=int, default=200,
-                        help='Number of IsolationForest trees')
+                        help='Number of RandomForest trees')
     
     args = parser.parse_args()
     
@@ -332,6 +339,14 @@ def main():
     s2_data, s2_profile, s2_transform, s2_crs = load_raster(args.s2_path)
     dem_data, dem_profile, dem_transform, dem_crs = load_raster(args.dem_path, band=1)
     
+    # Load EMIT data if provided
+    if args.emit_path and args.emit_path.exists():
+        emit_data, _, _, _ = load_raster(args.emit_path)
+        emit_features = compute_emit_features(emit_data)
+    else:
+        logger.warning("No EMIT data provided. Skipping EMIT features.")
+        emit_features = {}
+
     # Extract VV and VH from S1 (assume bands 1 and 2)
     vv = s1_data[0] if s1_data.ndim == 3 else s1_data
     vh = s1_data[1] if s1_data.ndim == 3 and s1_data.shape[0] > 1 else vv * 0.5  # Fallback
@@ -346,19 +361,18 @@ def main():
     
     # Stack features
     feature_array, feature_names = stack_features(
-        sar_features, optical_features, terrain_features
+        sar_features, optical_features, terrain_features, emit_features
     )
     
-    # Detect anomalies
-    anomaly_map, stats = detect_anomalies(
+    # Classify minerals
+    classification_map, stats = classify_minerals(
         feature_array,
-        contamination=args.contamination,
         n_estimators=args.n_estimators
     )
     
     # Save outputs
-    output_path = args.output_dir / 'anomaly_probability.tif'
-    save_geotiff(anomaly_map, output_path, s1_profile)
+    output_path = args.output_dir / 'classification_map.tif'
+    save_geotiff(classification_map, output_path, s1_profile)
     
     # Save feature stack (optional, for debugging)
     feature_stack_path = args.output_dir / 'feature_stack.tif'
