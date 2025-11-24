@@ -28,6 +28,7 @@ from rasterio.crs import CRS
 from scipy.ndimage import generic_filter
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
+import joblib
 
 # Configure logging
 logging.basicConfig(
@@ -185,7 +186,31 @@ def stack_features(sar_features, optical_features, terrain_features, emit_featur
     return feature_array, feature_names
 
 
-def classify_minerals(feature_array, n_estimators=200):
+def train_model(features, labels, n_estimators=200):
+    """Train a RandomForest model."""
+    logger.info("Training RandomForest model...")
+    
+    # Remove invalid labels (e.g. 0 or NaN if 0 is nodata)
+    valid_mask = (labels > 0) & np.isfinite(labels)
+    X = features[valid_mask]
+    y = labels[valid_mask]
+    
+    if len(X) == 0:
+        raise ValueError("No valid training samples found")
+        
+    clf = RandomForestClassifier(
+        n_estimators=n_estimators,
+        n_jobs=-1,
+        random_state=42,
+        verbose=1
+    )
+    clf.fit(X, y)
+    
+    logger.info(f"Model trained on {len(X)} samples. Score: {clf.score(X, y):.4f}")
+    return clf
+
+
+def classify_minerals(feature_array, model=None, demo_mode=False, n_estimators=200):
     """Apply RandomForest for mineral classification."""
     logger.info("Running mineral classification...")
     
@@ -204,28 +229,26 @@ def classify_minerals(feature_array, n_estimators=200):
     features_scaled = features_2d.copy()
     features_scaled[valid_mask] = scaler.fit_transform(features_2d[valid_mask])
     
-    # Placeholder for training data
-    # In a real scenario, you would load your labeled training data here.
-    # For now, we'll generate some dummy training data.
-    n_train_samples = 1000
-    X_train = np.random.rand(n_train_samples, n_features)
-    y_train = np.random.randint(0, 3, n_train_samples) # 3 mineral classes
+    if model is None:
+        if demo_mode:
+            logger.warning("DEMO MODE: Generating random training data. Results will be meaningless!")
+            n_train_samples = 1000
+            X_train = np.random.rand(n_train_samples, n_features)
+            y_train = np.random.randint(1, 4, n_train_samples) # 3 mineral classes
+            
+            model = RandomForestClassifier(
+                n_estimators=n_estimators,
+                random_state=42,
+                n_jobs=-1
+            )
+            model.fit(X_train, y_train)
+        else:
+            raise ValueError("No model provided and demo_mode is False")
 
-    # Fit RandomForestClassifier
-    logger.info("Training RandomForestClassifier model...")
-    clf = RandomForestClassifier(
-        n_estimators=n_estimators,
-        random_state=42,
-        n_jobs=-1,  # Use all CPU cores
-        verbose=1
-    )
-    
-    clf.fit(X_train, y_train)
-    
     # Predict mineral classes
     logger.info("Predicting mineral classes...")
     predictions = np.full(features_2d.shape[0], np.nan, dtype=np.float32)
-    predictions[valid_mask] = clf.predict(features_scaled[valid_mask])
+    predictions[valid_mask] = model.predict(features_scaled[valid_mask])
     
     # Reshape to image
     classification_map = predictions.reshape(h, w)
@@ -313,6 +336,12 @@ def main():
                         help='Tile identifier')
     parser.add_argument('--n-estimators', type=int, default=200,
                         help='Number of RandomForest trees')
+    parser.add_argument('--model-path', type=Path,
+                        help='Path to save/load trained model')
+    parser.add_argument('--train-data', type=Path,
+                        help='Path to training data (GeoTIFF with labels)')
+    parser.add_argument('--demo-mode', action='store_true',
+                        help='Run with random data for demonstration')
     
     args = parser.parse_args()
     
@@ -364,9 +393,36 @@ def main():
         sar_features, optical_features, terrain_features, emit_features
     )
     
+    # Prepare model
+    model = None
+    if args.train_data and args.train_data.exists():
+        logger.info(f"Loading training data: {args.train_data}")
+        train_labels, _, _, _ = load_raster(args.train_data, band=1)
+        
+        # Flatten features and labels for training
+        # Note: This assumes training data matches dimensions of input rasters
+        # In a real app, you'd handle spatial matching more robustly
+        model = train_model(feature_array.reshape(-1, len(feature_names)), 
+                          train_labels.flatten(), 
+                          n_estimators=args.n_estimators)
+        
+        if args.model_path:
+            logger.info(f"Saving model to {args.model_path}")
+            joblib.dump(model, args.model_path)
+            
+    elif args.model_path and args.model_path.exists():
+        logger.info(f"Loading model from {args.model_path}")
+        model = joblib.load(args.model_path)
+    
+    elif not args.demo_mode:
+        logger.error("Must provide --train-data, --model-path, or --demo-mode")
+        sys.exit(1)
+
     # Classify minerals
     classification_map, stats = classify_minerals(
         feature_array,
+        model=model,
+        demo_mode=args.demo_mode,
         n_estimators=args.n_estimators
     )
     

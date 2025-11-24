@@ -4,15 +4,11 @@ Unit tests for export_unreal.py
 
 import numpy as np
 import pytest
-import sys
 import json
 from pathlib import Path
 import imageio
 
-# Add scripts directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
-
-from export_unreal import (
+from unreal_miner.export_unreal import (
     validate_unreal_size,
     resample_dem,
     export_heightmap,
