@@ -9,17 +9,17 @@ The Unreal Miner system is a modular, end-to-end pipeline for processing satelli
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        DATA ACQUISITION                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │ Sentinel-1   │  │ Sentinel-2   │  │   DEM Data   │             │
-│  │  GRD (SAR)   │  │  L2A (RGB)   │  │ (SRTM/ALOS)  │             │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
-│         │                  │                  │                      │
-│         └──────────────────┴──────────────────┘                      │
-│                            │                                         │
-└────────────────────────────┼─────────────────────────────────────────┘
-                             ▼
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ ┌───────────┐ │
+│  │ Sentinel-1   │  │ Sentinel-2   │  │   DEM Data   │ │ EMIT      │ │
+│  │  GRD (SAR)   │  │  L2A (RGB)   │  │ (SRTM/ALOS)  │ │ L2A RFL   │ │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘ └─────┬─────┘ │
+│         │                  │                  │             │       │
+│         └──────────────────┴──────────────────┴─────────────┘       │
+│                                │                                    │
+└────────────────────────────────┼────────────────────────────────────┘
+                                 ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                      SNAP PREPROCESSING                              │
+│                      PREPROCESSING & ALIGNMENT                       │
 │  ┌──────────────────────────────┐  ┌──────────────────────────┐   │
 │  │   Sentinel-1 Processing      │  │  Sentinel-2 Processing   │   │
 │  │  • Apply-Orbit-File          │  │  • Cloud Masking (SCL)   │   │
@@ -47,21 +47,21 @@ The Unreal Miner system is a modular, end-to-end pipeline for processing satelli
 └──────────────────────────────┼──────────────────────────────────────┘
                                ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│              PYTHON FEATURE EXTRACTION & AI ANALYSIS                 │
+│           PYTHON FEATURE EXTRACTION & AI CLASSIFICATION              │
 │  ┌─────────────────────────────────────────────────────────────┐   │
 │  │  FEATURE ENGINEERING                                        │   │
 │  │  • SAR Metrics: VV/VH ratio, cross-polarization, texture    │   │
 │  │  • Optical Indices: NDVI, NDWI, RGB statistics              │   │
+│  │  • Hyperspectral Indices: Iron, clay, carbonates (from EMIT)│   │
 │  │  • Terrain Features: Slope, aspect, curvature, roughness    │   │
-│  │  • Temporal Features: Multi-date change detection           │   │
 │  └──────────────────────────┬──────────────────────────────────┘   │
 │                              ▼                                       │
 │  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  MACHINE LEARNING / AI ANOMALY DETECTION                    │   │
-│  │  • Unsupervised: IsolationForest, Local Outlier Factor      │   │
-│  │  • Clustering: DBSCAN, K-Means for pattern recognition      │   │
-│  │  • Deep Learning: CNN, AutoEncoder (optional)               │   │
-│  │  • Output: Anomaly probability maps (0-1 float)             │   │
+│  │  MACHINE LEARNING / AI MINERAL CLASSIFICATION               │   │
+│  │  • Supervised: RandomForest, SVM, XGBoost                   │   │
+│  │  • Training Data: Labeled mineral samples                   │   │
+│  │  • Deep Learning: CNNs for spectral feature extraction      │   │
+│  │  • Output: Mineral classification map (integer labels)      │   │
 │  └──────────────────────────┬──────────────────────────────────┘   │
 └──────────────────────────────┼──────────────────────────────────────┘
                                ▼
@@ -70,7 +70,7 @@ The Unreal Miner system is a modular, end-to-end pipeline for processing satelli
 │  ┌─────────────────────────────────────────────────────────────┐   │
 │  │  • Heightmap: 16-bit PNG, power-of-2 + 1 sizing             │   │
 │  │  • Textures: RGB base imagery (sRGB PNG/JPEG)               │   │
-│  │  • Overlays: Anomaly heatmaps (linear grayscale)            │   │
+│  │  • Overlays: Mineral classification maps (color-coded)      │   │
 │  │  • Metadata: meta.json (CRS, transforms, Z-scale)           │   │
 │  │  • Optional: Vector layers (CSV/LAS point clouds)           │   │
 │  └──────────────────────────┬──────────────────────────────────┘   │
@@ -102,19 +102,21 @@ The Unreal Miner system is a modular, end-to-end pipeline for processing satelli
 **Purpose**: Fetch satellite imagery and elevation data from remote APIs
 
 **Components**:
-- `scripts/fetch_copernicus.sh`: Automated download from Copernicus Open Access Hub
-- API credentials management via `.env` file
-- Local caching and file management
+- `scripts/fetch_copernicus.sh`: Automated download from Copernicus Open Access Hub.
+- `scripts/fetch_emit.py`: Automated download from NASA Earthdata (using `earthaccess`).
+- API credentials management via `.env` file.
+- Local caching and file management.
 
 **Inputs**:
 - AOI coordinates (bounding box or polygon)
 - Date range for temporal analysis
-- Sensor specifications (S1 GRD, S2 L2A)
+- Sensor specifications (S1 GRD, S2 L2A, EMIT L2A RFL)
 
 **Outputs**:
 - `data/raw/s1_*.zip`: Sentinel-1 GRD products
 - `data/raw/s2_*.zip`: Sentinel-2 L2A products
 - `data/raw/dem_*.tif`: DEM rasters
+- `data/raw/emit_*.nc`: EMIT L2A Reflectance products
 
 ### 2. SNAP Preprocessing Layer
 
@@ -178,7 +180,7 @@ The Unreal Miner system is a modular, end-to-end pipeline for processing satelli
 
 ### 4. Feature Extraction & AI Analysis Layer
 
-**Purpose**: Compute geophysical features and detect anomalies using machine learning
+**Purpose**: Compute geophysical features and classify minerals using machine learning
 
 **Technology Stack**:
 - Python 3.9+
@@ -198,31 +200,36 @@ The Unreal Miner system is a modular, end-to-end pipeline for processing satelli
 - **NDWI**: `(Green - NIR) / (Green + NIR)` - water index
 - **RGB Statistics**: Mean, std deviation, brightness
 
+**Hyperspectral Features (from EMIT)**:
+- **Iron Index**: Based on absorption features around 850-950 nm.
+- **Clay Index**: Based on absorption features around 2100-2300 nm.
+- **Carbonate Index**: Based on absorption features around 2300-2350 nm.
+
 **Terrain Features**:
 - **Slope**: First derivative of elevation
 - **Aspect**: Direction of slope
 - **Curvature**: Second derivative (convex/concave)
 - **Roughness**: Local elevation variance
 
-**Anomaly Detection Models**:
+**Mineral Classification Models**:
 
-1. **IsolationForest** (Primary):
-   - Unsupervised outlier detection
-   - Efficient for high-dimensional feature spaces
-   - Contamination parameter: 0.01-0.05 (1-5% anomalies)
+1. **RandomForestClassifier** (Primary):
+   - Supervised classification
+   - Robust to high-dimensional data and feature scaling.
+   - Provides feature importance scores.
 
-2. **Local Outlier Factor**:
-   - Density-based anomaly scoring
-   - Good for spatially clustered anomalies
+2. **Support Vector Machine (SVM)**:
+   - Effective in high-dimensional spaces.
+   - Kernel tricks for non-linear classification.
 
 3. **Deep Learning** (Optional):
-   - Convolutional Autoencoders for reconstruction error
-   - Pretrained ResNet for feature extraction + classifier
+   - 1D CNNs for spectral feature extraction from EMIT data.
+   - Transfer learning from existing mineral spectral libraries.
 
 **Outputs**:
-- `anomaly_probability.tif`: Float32 raster (0-1 probability)
-- `feature_stack.tif`: Multi-band feature raster
-- `anomaly_scores.csv`: Per-pixel scores for validation
+- `classification_map.tif`: Integer raster with mineral class labels.
+- `feature_stack.tif`: Multi-band feature raster.
+- `classification_report.txt`: F1 scores, precision, recall for each class.
 
 ### 5. Unreal Export Layer
 
@@ -305,13 +312,13 @@ The Unreal Miner system is a modular, end-to-end pipeline for processing satelli
 ```
 Raw Satellite Data (ZIP)
     ↓ [SNAP gpt]
-Calibrated GeoTIFFs (VV, VH, RGB)
+Calibrated GeoTIFFs (VV, VH, RGB, EMIT)
     ↓ [GDAL warp]
 Aligned Rasters (Common CRS, Grid)
     ↓ [Python rasterio]
 Feature Vectors (N×M array)
     ↓ [scikit-learn]
-Anomaly Scores (N×1 array)
+Mineral Class Predictions (N×1 array)
     ↓ [Python imageio]
 Unreal Assets (PNG, JSON)
     ↓ [Unreal Import]

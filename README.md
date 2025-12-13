@@ -17,11 +17,11 @@ This project provides an end-to-end, reproducible pipeline from Copernicus satel
 ### Key Features
 
 - **Automated Satellite Data Processing**: Fetch and process Sentinel-1 GRD and Sentinel-2 L2A data via API
-- **AI-Powered Anomaly Detection**: Machine learning models (IsolationForest, CNNs) identify geological anomalies
-- **Geospatial Fusion**: Combine SAR and optical data with intelligent feature extraction
-- **Unreal Engine Export**: Generate georeferenced heightmaps, textures, and anomaly overlays
-- **Interactive Visualization**: Explore terrain and mineral anomalies in immersive 3D environments
-- **Reproducible Pipeline**: Complete documentation and example data for validation
+- **AI-Powered Mineral Classification**: Machine learning models (RandomForest, SVM, etc.) classify mineral types with a target accuracy of 75%+.
+- **Multi-Source Data Fusion**: Combine Sentinel-1 (SAR), Sentinel-2 (optical), and NASA EMIT (hyperspectral) data for enhanced accuracy.
+- **Unreal Engine Export**: Generate georeferenced heightmaps, textures, and mineral classification maps.
+- **Interactive Visualization**: Explore terrain and mineral classifications in immersive 3D environments.
+- **Reproducible Pipeline**: Complete documentation and example data for validation.
 
 ## 🚀 Quick Start
 
@@ -36,6 +36,7 @@ This project provides an end-to-end, reproducible pipeline from Copernicus satel
   pip install rasterio numpy scikit-learn scipy imageio jupyter gdal
   ```
 - **Copernicus API Credentials**: Register at https://scihub.copernicus.eu/
+- **NASA Earthdata Login**: Register at https://urs.earthdata.nasa.gov/users/new
 
 ### Installation
 
@@ -171,11 +172,12 @@ Unreal-Miner/
 - Align to identical pixel grids (10m resolution)
 - Create VRT stacks for multi-band analysis
 
-### 4. Feature Extraction & AI Anomaly Detection
-- Compute SAR features: VV/VH ratio, local texture, roughness
-- Extract optical indices: NDVI, RGB statistics
-- Run machine learning models (IsolationForest, neural networks)
-- Generate anomaly probability maps (0-1 float)
+### 4. Feature Extraction & AI Mineral Classification
+- Compute SAR features: VV/VH ratio, local texture, roughness.
+- Extract optical indices: NDVI, RGB statistics.
+- Compute hyperspectral indices from EMIT data for iron, clay, carbonates, etc.
+- Run machine learning models (RandomForest, SVM, etc.) to classify mineral types.
+- Generate mineral classification maps.
 
 ### 5. Unreal Engine Export
 - Convert DEM to 16-bit heightmap (power-of-two + 1 sizing)
@@ -226,11 +228,12 @@ Found a bug or have a feature request? Open an issue using our templates:
 - **[Troubleshooting](docs/troubleshooting.md)**: Common issues and solutions
 
 ### New: Extended Documentation
-- **[Scientific Validation](docs/validation.md)**: Model performance, geological basis, and limitations
-- **[Performance Benchmarks](docs/performance.md)**: Processing times, hardware requirements, optimization tips
-- **[ML Models](docs/ml_models.md)**: Algorithm details, customization, and feature engineering
-- **[Data Acquisition](docs/data_acquisition.md)**: Copernicus API setup, data sources, troubleshooting
-- **[Project Roadmap](ROADMAP.md)**: Development status, future plans, and how to contribute
+- **[Accuracy Roadmap](docs/accuracy_roadmap.md)**: A detailed plan for achieving 75%+ mineral classification accuracy.
+- **[Scientific Validation](docs/validation.md)**: Model performance, geological basis, and limitations.
+- **[Performance Benchmarks](docs/performance.md)**: Processing times, hardware requirements, optimization tips.
+- **[ML Models](docs/ml_models.md)**: Algorithm details, customization, and feature engineering.
+- **[Data Acquisition](docs/data_acquisition.md)**: Copernicus and NASA Earthdata API setup, data sources, troubleshooting.
+- **[Project Roadmap](ROADMAP.md)**: Development status, future plans, and how to contribute.
 
 ## 🔐 Data Policy
 
