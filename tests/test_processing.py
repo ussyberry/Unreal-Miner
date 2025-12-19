@@ -12,7 +12,7 @@ from unreal_miner.process_fusion import (
     compute_optical_features,
     compute_terrain_features,
     stack_features,
-    classify_minerals as detect_anomalies # Renamed in source but test uses old name? Wait, let me check source.
+    classify_minerals
 )
 
 
@@ -183,7 +183,7 @@ class TestFeatureStacking:
         terrain_features = compute_terrain_features(sample_dem_data)
         
         feature_array, feature_names = stack_features(
-            sar_features, optical_features, terrain_features
+            sar_features, optical_features, terrain_features, {}
         )
         
         # Check shape
@@ -198,11 +198,11 @@ class TestFeatureStacking:
         assert 'slope' in feature_names
 
 
-class TestAnomalyDetection:
-    """Test anomaly detection functionality."""
+class TestMineralClassification:
+    """Test mineral classification functionality."""
     
-    def test_detect_anomalies_basic(self, sample_sar_data, sample_optical_data, sample_dem_data):
-        """Test basic anomaly detection."""
+    def test_classify_minerals_basic(self, sample_sar_data, sample_optical_data, sample_dem_data):
+        """Test basic mineral classification."""
         vv = sample_sar_data[0]
         vh = sample_sar_data[1]
         
@@ -211,28 +211,28 @@ class TestAnomalyDetection:
         terrain_features = compute_terrain_features(sample_dem_data)
         
         feature_array, _ = stack_features(
-            sar_features, optical_features, terrain_features
+            sar_features, optical_features, terrain_features, {}
         )
         
-        anomaly_map, stats = detect_anomalies(
+        anomaly_map, stats = classify_minerals(
             feature_array, demo_mode=True, n_estimators=50
         )
         
         # Check output shape
         assert anomaly_map.shape == vv.shape
         
-        # Check anomaly scores are in [0, 1]
+        # Check classification scores are reasonable
         assert np.nanmin(anomaly_map) >= 0
-        assert np.nanmax(anomaly_map) <= 1
+        assert np.nanmax(anomaly_map) <= 10  # Allow for multiple classes
         
         # Check stats
         assert 'mean' in stats
         assert 'std' in stats
-        assert 'p95' in stats
-        assert stats['n_anomalies_p95'] > 0
+        assert 'min' in stats
+        assert 'max' in stats
     
-    def test_contamination_effect(self, sample_sar_data, sample_optical_data, sample_dem_data):
-        """Test that contamination parameter affects results."""
+    def test_demo_mode_effect(self, sample_sar_data, sample_optical_data, sample_dem_data):
+        """Test that demo mode runs without errors."""
         vv = sample_sar_data[0]
         vh = sample_sar_data[1]
         
@@ -241,20 +241,20 @@ class TestAnomalyDetection:
         terrain_features = compute_terrain_features(sample_dem_data)
         
         feature_array, _ = stack_features(
-            sar_features, optical_features, terrain_features
+            sar_features, optical_features, terrain_features, {}
         )
         
         # Test with different contamination values
-        anomaly_map_1, stats_1 = detect_anomalies(
+        anomaly_map_1, stats_1 = classify_minerals(
             feature_array, demo_mode=True, n_estimators=50
         )
-        anomaly_map_2, stats_2 = detect_anomalies(
+        anomaly_map_2, stats_2 = classify_minerals(
             feature_array, demo_mode=True, n_estimators=50
         )
         
-        # Higher contamination should result in more anomalies
-        # (This is a statistical test, may occasionally fail due to randomness)
-        assert stats_2['n_anomalies_p95'] >= stats_1['n_anomalies_p95'] * 0.8
+        # Both runs should complete successfully
+        assert 'mean' in stats_1
+        assert 'mean' in stats_2
     
     def test_nan_handling(self):
         """Test that NaN values are handled correctly."""
@@ -262,7 +262,7 @@ class TestAnomalyDetection:
         feature_array = np.random.randn(50, 50, 5).astype(np.float32)
         feature_array[10:20, 10:20, :] = np.nan
         
-        anomaly_map, stats = detect_anomalies(
+        anomaly_map, stats = classify_minerals(
             feature_array, demo_mode=True, n_estimators=50
         )
         

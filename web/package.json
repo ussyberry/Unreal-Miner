@@ -22,5 +22,9 @@
     "eslint-config-next": "16.0.3",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "dependencies": {
+    "lucide-react": "^0.263.1",
+    "framer-motion": "^10.16.4"
   }
 }

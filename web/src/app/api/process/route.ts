@@ -5,36 +5,78 @@ import path from 'path';
 
 const execAsync = promisify(exec);
 
-export async function POST() {
+export async function POST(request: Request) {
     try {
-        // In a real app, we would use the installed package command 'unreal-miner-process'
-        // For this demo, we'll point to the example script or run the python module directly
-        // assuming we are running from the web directory
+        const body = await request.json();
+        const { s1Path, s2Path, demPath, outputDir, demoMode = true } = body;
+
+        // Validate required parameters
+        if (!s1Path || !s2Path || !demPath || !outputDir) {
+            return NextResponse.json(
+                { error: 'Missing required parameters: s1Path, s2Path, demPath, outputDir' },
+                { status: 400 }
+            );
+        }
 
         const projectRoot = path.resolve(process.cwd(), '..');
+        
+        // Construct command to run the processing pipeline
+        const cmd = `cd "${projectRoot}" && python -m unreal_miner.process_fusion \
+            --s1-path "${s1Path}" \
+            --s2-path "${s2Path}" \
+            --dem-path "${demPath}" \
+            --output-dir "${outputDir}" \
+            ${demoMode ? '--demo-mode' : ''} \
+            --tile-id "web_job_${Date.now()}"`;
 
-        // Construct command to run the example pipeline (or a simplified version)
-        // We use the python module directly to avoid shell script issues on Windows
-        const cmd = `cd "${projectRoot}" && python -m unreal_miner.process_fusion --s1-path data/sample_tile/raw/s1.tif --s2-path data/sample_tile/raw/s2.tif --dem-path data/sample_tile/raw/dem.tif --output-dir data/outputs --demo-mode`;
+        console.log('Executing processing job:', cmd);
 
-        // Note: This will fail if files don't exist, but for the dashboard demo we just want to show we tried.
-        // In a real deployment, we'd use a job queue (Redis/Celery).
-
-        console.log('Executing:', cmd);
-
-        // We won't actually await the full process for this simple demo endpoint
-        // to avoid timeout, or we can await it if it's fast.
-        // For now, let's just simulate success or run a quick version.
-
-        return NextResponse.json({
-            message: 'Processing job queued successfully',
-            jobId: Date.now().toString()
+        // Execute the processing command
+        const { stdout, stderr } = await execAsync(cmd, {
+            timeout: 300000, // 5 minute timeout
+            maxBuffer: 1024 * 1024 * 10 // 10MB buffer
         });
 
-    } catch (error) {
+        if (stderr && !stderr.includes('WARNING')) {
+            console.error('Processing stderr:', stderr);
+            return NextResponse.json(
+                { error: 'Processing failed', details: stderr },
+                { status: 500 }
+            );
+        }
+
+        // Return success response with job details
+        return NextResponse.json({
+            success: true,
+            message: 'Processing completed successfully',
+            jobId: `web_job_${Date.now()}`,
+            output: {
+                stdout: stdout.trim(),
+                outputDir: outputDir,
+                files: [
+                    'classification_map.tif',
+                    'feature_stack.tif',
+                    'meta.json'
+                ]
+            }
+        });
+
+    } catch (error: any) {
         console.error('Processing failed:', error);
+        
+        // Handle timeout specifically
+        if (error.code === 'ETIMEDOUT') {
+            return NextResponse.json(
+                { error: 'Processing timeout - job took too long to complete' },
+                { status: 408 }
+            );
+        }
+
         return NextResponse.json(
-            { error: 'Failed to start processing job' },
+            { 
+                error: 'Failed to process satellite data',
+                details: error.message || 'Unknown error occurred'
+            },
             { status: 500 }
         );
     }
