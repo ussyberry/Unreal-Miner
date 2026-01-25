@@ -1,0 +1,19 @@
+{
+  "tile_id": "test_sample",
+  "crs": "EPSG:4326",
+  "bbox": [
+    -74.0,
+    39.0,
+    -73.0,
+    40.0
+  ],
+  "pixel_size_m": 0.01,
+  "width": 1025,
+  "height": 1025,
+  "unreal_import_parameters": {
+    "landscape_size": "1025x1025",
+    "section_size": "127x127",
+    "sections_per_component": 1,
+    "x_scale_cm": 1.0,
+    "y_scale_cm": 1.0,
+    "z_scale_cm": 
